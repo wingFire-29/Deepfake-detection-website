@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deepfake Detection</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="api.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+        }
+        .navbar {
+            background-color: #343a40;
+        }
+        .hero {
+            background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+            color: white;
+            padding: 4rem 0;
+            margin-bottom: 2rem;
+        }
+        .upload-container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        .tab-container {
+            margin-bottom: 1.5rem;
+        }
+        .result-container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        .result-card {
+            transition: transform 0.3s;
+        }
+        .result-card:hover {
+            transform: translateY(-5px);
+        }
+        .fake-badge {
+            background-color: #dc3545;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .real-badge {
+            background-color: #28a745;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .footer {
+            background-color: #343a40;
+            color: #f8f9fa;
+            padding: 2rem 0;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">Deepfake Detector</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">About</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Contact</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- API Status Bar -->
+    <div id="apiStatus" class="container-fluid py-2 bg-warning text-white">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <small>Checking API connection...</small>
+                <button id="retryButton" class="btn btn-sm btn-light d-none">Retry Connection</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Hero Section -->
+    <div class="hero">
+        <div class="container text-center">
+            <h1 class="display-4">Deepfake Detection Tool</h1>
+            <p class="lead">Upload your photos and videos for AI-powered deepfake detection</p>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="row">
+            <!-- Upload Section -->
+            <div class="col-lg-6">
+                <div class="upload-container">
+                    <h2 class="mb-4">Upload Media</h2>
+                    
+                    <!-- Media Type Tabs -->
+                    <div class="tab-container">
+                        <ul class="nav nav-tabs">
+                            <li class="nav-item">
+                                <a class="nav-link active" id="imageTab" href="#">Image</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="videoTab" href="#">Video</a>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Upload Form -->
+                    <div class="mb-3">
+                        <label for="mediaTitle" class="form-label">Title (Optional)</label>
+                        <input type="text" class="form-control" id="mediaTitle">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="mediaDescription" class="form-label">Description (Optional)</label>
+                        <textarea class="form-control" id="mediaDescription" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="mediaFile" class="form-label" id="fileInputLabel">Select Image</label>
+                        <input type="file" class="form-control" id="mediaFile" accept="image/*">
+                    </div>
+                    
+                    <!-- Preview -->
+                    <div class="mb-4 text-center d-none" id="previewContainer">
+                        <h5 class="mb-3">Preview</h5>
+                        <img id="imagePreview" class="img-fluid rounded d-none" style="max-height: 300px">
+                        <video id="videoPreview" controls class="img-fluid rounded d-none" style="max-height: 300px"></video>
+                    </div>
+                    
+                    <button class="btn btn-primary w-100" id="uploadButton">Upload & Analyze</button>
+                    
+                    <div id="errorMessage" class="alert alert-danger mt-3 d-none"></div>
+                </div>
+            </div>
+            
+            <!-- Results Section -->
+            <div class="col-lg-6">
+                <div class="result-container">
+                    <h2 class="mb-4">Detection Results</h2>
+                    
+                    <div id="resultsContent" class="d-none">
+                        <div class="mb-4 text-center">
+                            <img id="resultImage" class="img-fluid rounded d-none" style="max-height: 300px">
+                            <video id="resultVideo" controls class="img-fluid rounded d-none" style="max-height: 300px"></video>
+                        </div>
+                        
+                        <h3 id="resultTitle"></h3>
+                        <p id="resultDescription"></p>
+                        
+                        <div class="result-details mb-4">
+                            <h4 class="mb-3">Analysis Results</h4>
+                            <div class="card border-0 bg-light">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h5 class="mb-0">Verdict:</h5>
+                                        <span id="resultVerdict" class="fake-badge">FAKE</span>
+                                    </div>
+                                    
+                                    <p class="mb-2">
+                                        <strong>Confidence Score:</strong> <span id="resultConfidence">95%</span>
+                                    </p>
+                                    
+                                    <p class="mb-2">
+                                        <strong>Analysis Time:</strong> <span id="resultAnalysisTime">2.5s</span>
+                                    </p>
+                                    
+                                    <div id="areasOfConcern" class="d-none">
+                                        <strong>Areas of Concern:</strong>
+                                        <ul class="mb-0 mt-1" id="concernList"></ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="emptyResults" class="text-center py-5">
+                        <p class="text-muted">No results to display. Upload media for analysis.</p>
+                    </div>
+                </div>
+                
+                <!-- History -->
+                <div id="historySection" class="d-none">
+                    <h4 class="mb-3">History</h4>
+                    <div class="row" id="historyContainer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container text-center">
+            <p>© 2023 Deepfake Detector | All Rights Reserved</p>
+            <p class="mb-0">A tool to combat misinformation by detecting AI-generated fake media</p>
+        </div>
+    </footer>
+    
+    <script>
+        // Main Application Script
+        document.addEventListener('DOMContentLoaded', function() {
+            // Elements
+            const apiStatus = document.getElementById('apiStatus');
+            const retryButton = document.getElementById('retryButton');
+            const imageTab = document.getElementById('imageTab');
+            const videoTab = document.getElementById('videoTab');
+            const mediaFile = document.getElementById('mediaFile');
+            const fileInputLabel = document.getElementById('fileInputLabel');
+            const mediaTitle = document.getElementById('mediaTitle');
+            const mediaDescription = document.getElementById('mediaDescription');
+            const previewContainer = document.getElementById('previewContainer');
+            const imagePreview = document.getElementById('imagePreview');
+            const videoPreview = document.getElementById('videoPreview');
+            const uploadButton = document.getElementById('uploadButton');
+            const errorMessage = document.getElementById('errorMessage');
+            const resultsContent = document.getElementById('resultsContent');
+            const emptyResults = document.getElementById('emptyResults');
+            const resultImage = document.getElementById('resultImage');
+            const resultVideo = document.getElementById('resultVideo');
+            const resultTitle = document.getElementById('resultTitle');
+            const resultDescription = document.getElementById('resultDescription');
+            const resultVerdict = document.getElementById('resultVerdict');
+            const resultConfidence = document.getElementById('resultConfidence');
+            const resultAnalysisTime = document.getElementById('resultAnalysisTime');
+            const areasOfConcern = document.getElementById('areasOfConcern');
+            const concernList = document.getElementById('concernList');
+            const historySection = document.getElementById('historySection');
+            const historyContainer = document.getElementById('historyContainer');
+            
+            // State
+            let activeTab = 'image';
+            let uploadedMedia = null;
+            let results = [];
+            let selectedResult = null;
+            
+            // Check API connection
+            checkApiConnection();
+            
+            // Event Listeners
+            imageTab.addEventListener('click', function(e) {
+                e.preventDefault();
+                setActiveTab('image');
+            });
+            
+            videoTab.addEventListener('click', function(e) {
+                e.preventDefault();
+                setActiveTab('video');
+            });
+            
+            mediaFile.addEventListener('change', handleFileChange);
+            uploadButton.addEventListener('click', handleUpload);
+            retryButton.addEventListener('click', checkApiConnection);
+            
+            // Functions
+            function setActiveTab(tab) {
+                activeTab = tab;
+                
+                // Update UI
+                if (tab === 'image') {
+                    imageTab.classList.add('active');
+                    videoTab.classList.remove('active');
+                    fileInputLabel.textContent = 'Select Image';
+                    mediaFile.accept = 'image/*';
+                } else {
+                    imageTab.classList.remove('active');
+                    videoTab.classList.add('active');
+                    fileInputLabel.textContent = 'Select Video';
+                    mediaFile.accept = 'video/*';
+                }
+                
+                // Reset uploaded media
+                uploadedMedia = null;
+                mediaFile.value = '';
+                previewContainer.classList.add('d-none');
+                imagePreview.classList.add('d-none');
+                videoPreview.classList.add('d-none');
+            }
+            
+            function handleFileChange(e) {
+                if (e.target.files && e.target.files[0]) {
+                    const file = e.target.files[0];
+                    const reader = new FileReader();
+                    
+                    reader.onload = function(event) {
+                        uploadedMedia = {
+                            file: file,
+                            preview: event.target.result
+                        };
+                        
+                        previewContainer.classList.remove('d-none');
+                        
+                        if (activeTab === 'image') {
+                            imagePreview.src = event.target.result;
+                            imagePreview.classList.remove('d-none');
+                            videoPreview.classList.add('d-none');
+                        } else {
+                            videoPreview.src = event.target.result;
+                            videoPreview.classList.remove('d-none');
+                            imagePreview.classList.add('d-none');
+                        }
+                    };
+                    
+                    reader.readAsDataURL(file);
+                }
+            }
+            
+            async function checkApiConnection() {
+                try {
+                    apiStatus.className = 'container-fluid py-2 bg-warning text-white';
+                    apiStatus.querySelector('small').textContent = 'Checking API connection...';
+                    retryButton.classList.add('d-none');
+                    
+                    console.log('Attempting to connect to API at http://127.0.0.1:8000/api/');
+                    
+                    const response = await fetch('http://127.0.0.1:8000/api/', {
+                        mode: 'cors',
+                        // Remove credentials to avoid CORS issues
+                        // credentials: 'include'
+                    });
+                    
+                    console.log('API response status:', response.status);
+                    
+                    if (response.ok) {
+                        apiStatus.className = 'container-fluid py-2 bg-success text-white';
+                        apiStatus.querySelector('small').textContent = 'Connected to API successfully';
+                        console.log('API connection successful');
+                        fetchInitialData();
+                    } else {
+                        const responseText = await response.text();
+                        apiStatus.className = 'container-fluid py-2 bg-danger text-white';
+                        apiStatus.querySelector('small').textContent = `API Error: HTTP ${response.status}`;
+                        retryButton.classList.remove('d-none');
+                        console.error('API connection failed with status:', response.status);
+                        console.error('Response text:', responseText);
+                    }
+                } catch (err) {
+                    apiStatus.className = 'container-fluid py-2 bg-danger text-white';
+                    apiStatus.querySelector('small').textContent = `API Connection Error: ${err.message}`;
+                    retryButton.classList.remove('d-none');
+                    console.error('API connection error:', err);
+                    showError('Could not connect to the API server. Running in demo mode with simulated results.');
+                }
+            }
+            
+            async function fetchInitialData() {
+                try {
+                    const mediaItems = await window.api.fetchMediaItems();
+                    console.log('Fetched items:', mediaItems);
+                    
+                    if (mediaItems && mediaItems.length > 0) {
+                        // Transform the data
+                        results = mediaItems.map(item => ({
+                            id: item.id,
+                            title: item.title || 'Untitled',
+                            description: item.description || '',
+                            mediaType: item.media_type,
+                            preview: item.media_type === 'image' ? item.image : item.video,
+                            uploadedAt: item.uploaded_at,
+                            isFake: item.detection_result ? item.detection_result.is_fake : null,
+                            confidenceScore: item.detection_result ? item.detection_result.confidence_score : null,
+                            details: item.detection_result ? item.detection_result.details : null
+                        }));
+                        
+                        // Update UI
+                        updateHistory();
+                        selectResult(results[0]);
+                    }
+                } catch (err) {
+                    console.error('Error fetching media items:', err);
+                    showError('Failed to load media items. Please try again later.');
+                }
+            }
+            
+            function showError(message) {
+                errorMessage.textContent = message;
+                errorMessage.classList.remove('d-none');
+            }
+            
+            function hideError() {
+                errorMessage.classList.add('d-none');
+            }
+            
+            async function handleUpload() {
+                if (!uploadedMedia) {
+                    alert('Please select a file to upload');
+                    return;
+                }
+                
+                hideError();
+                uploadButton.disabled = true;
+                uploadButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analyzing...';
+                
+                // Check if we're in demo mode
+                if (apiStatus.classList.contains('bg-danger')) {
+                    console.log('Running in demo mode');
+                    // Simulate API response in demo mode
+                    setTimeout(() => {
+                        const newResult = {
+                            id: Date.now(),
+                            title: mediaTitle.value || 'Untitled',
+                            description: mediaDescription.value || '',
+                            mediaType: activeTab,
+                            preview: uploadedMedia.preview,
+                            uploadedAt: new Date().toISOString(),
+                            isFake: Math.random() > 0.5,
+                            confidenceScore: (Math.random() * 0.5 + 0.5).toFixed(2),
+                            details: {
+                                areas_of_concern: ['face', 'eyes'],
+                                analysis_time: (Math.random() * 3 + 1).toFixed(1)
+                            }
+                        };
+                        
+                        results.unshift(newResult);
+                        updateHistory();
+                        selectResult(newResult);
+                        resetForm();
+                    }, 2000);
+                    return;
+                }
+                
+                // Real API mode
+                try {
+                    // Create form data
+                    const formData = new FormData();
+                    formData.append('title', mediaTitle.value || '');
+                    formData.append('description', mediaDescription.value || '');
+                    formData.append('media_type', activeTab);
+                    
+                    // Append the appropriate file field
+                    if (activeTab === 'image') {
+                        formData.append('image', uploadedMedia.file);
+                    } else {
+                        formData.append('video', uploadedMedia.file);
+                    }
+                    
+                    // Debug information
+                    console.log('Uploading media:');
+                    console.log('- File:', uploadedMedia.file.name, uploadedMedia.file.type, uploadedMedia.file.size + ' bytes');
+                    console.log('- Media type:', activeTab);
+                    console.log('- Title:', mediaTitle.value || '[empty]');
+                    
+                    // Upload the media
+                    console.log('Uploading media with formData...');
+                    const response = await window.api.uploadMedia(formData);
+                    console.log('Upload response:', response);
+                    
+                    // Transform the response
+                    const newResult = {
+                        id: response.id,
+                        title: response.title || 'Untitled',
+                        description: response.description || '',
+                        mediaType: response.media_type,
+                        preview: response.media_type === 'image' ? response.image : response.video,
+                        uploadedAt: response.uploaded_at,
+                        isFake: response.detection_result ? response.detection_result.is_fake : null,
+                        confidenceScore: response.detection_result ? response.detection_result.confidence_score : null,
+                        details: response.detection_result ? response.detection_result.details : null
+                    };
+                    
+                    results.unshift(newResult);
+                    updateHistory();
+                    selectResult(newResult);
+                    resetForm();
+                } catch (err) {
+                    console.error('Error uploading media:', err);
+                    showError(`Failed to upload media: ${err.message || 'Unknown error'}`);
+                    uploadButton.disabled = false;
+                    uploadButton.innerHTML = 'Upload & Analyze';
+                }
+            }
+            
+            function resetForm() {
+                mediaTitle.value = '';
+                mediaDescription.value = '';
+                mediaFile.value = '';
+                uploadedMedia = null;
+                previewContainer.classList.add('d-none');
+                uploadButton.disabled = false;
+                uploadButton.textContent = 'Upload & Analyze';
+            }
+            
+            function selectResult(result) {
+                selectedResult = result;
+                
+                // Update UI
+                if (result) {
+                    resultTitle.textContent = result.title;
+                    resultDescription.textContent = result.description;
+                    
+                    if (result.mediaType === 'image') {
+                        resultImage.src = result.preview;
+                        resultImage.classList.remove('d-none');
+                        resultVideo.classList.add('d-none');
+                    } else {
+                        resultVideo.src = result.preview;
+                        resultVideo.classList.remove('d-none');
+                        resultImage.classList.add('d-none');
+                    }
+                    
+                    resultVerdict.textContent = result.isFake ? 'FAKE' : 'REAL';
+                    resultVerdict.className = result.isFake ? 'fake-badge' : 'real-badge';
+                    resultConfidence.textContent = `${(result.confidenceScore * 100).toFixed(1)}%`;
+                    
+                    if (result.details && result.details.analysis_time) {
+                        resultAnalysisTime.textContent = `${result.details.analysis_time}s`;
+                    }
+                    
+                    // Areas of concern
+                    if (result.isFake && result.details && result.details.areas_of_concern) {
+                        areasOfConcern.classList.remove('d-none');
+                        concernList.innerHTML = '';
+                        result.details.areas_of_concern.forEach(area => {
+                            const li = document.createElement('li');
+                            li.textContent = area;
+                            concernList.appendChild(li);
+                        });
+                    } else {
+                        areasOfConcern.classList.add('d-none');
+                    }
+                    
+                    resultsContent.classList.remove('d-none');
+                    emptyResults.classList.add('d-none');
+                }
+            }
+            
+            function updateHistory() {
+                if (results.length > 0) {
+                    historySection.classList.remove('d-none');
+                    historyContainer.innerHTML = '';
+                    
+                    results.forEach(result => {
+                        const col = document.createElement('div');
+                        col.className = 'col-md-6 mb-3';
+                        
+                        const card = document.createElement('div');
+                        card.className = `card result-card ${selectedResult && selectedResult.id === result.id ? 'border-primary' : ''}`;
+                        card.style.cursor = 'pointer';
+                        card.addEventListener('click', () => selectResult(result));
+                        
+                        const cardBody = document.createElement('div');
+                        cardBody.className = 'card-body';
+                        
+                        const header = document.createElement('div');
+                        header.className = 'd-flex justify-content-between align-items-start mb-2';
+                        
+                        const title = document.createElement('h5');
+                        title.className = 'card-title mb-0';
+                        title.textContent = result.title;
+                        
+                        const badge = document.createElement('span');
+                        badge.className = result.isFake ? 'fake-badge' : 'real-badge';
+                        badge.textContent = result.isFake ? 'FAKE' : 'REAL';
+                        
+                        const date = document.createElement('p');
+                        date.className = 'card-text text-muted small';
+                        date.textContent = new Date(result.uploadedAt).toLocaleString();
+                        
+                        header.appendChild(title);
+                        header.appendChild(badge);
+                        cardBody.appendChild(header);
+                        cardBody.appendChild(date);
+                        card.appendChild(cardBody);
+                        col.appendChild(card);
+                        historyContainer.appendChild(col);
+                    });
+                }
+            }
+        });
+    </script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 
